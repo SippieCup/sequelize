@@ -12,6 +12,8 @@ const { DataTypes } = require('@sequelize/core');
 const fileName = `${Math.random()}_test.sqlite`;
 const directoryName = `${Math.random()}_test_directory`;
 const nestedFileName = jetpack.path(directoryName, 'subdirectory', 'test.sqlite');
+const { QueryTypes, Sequelize } = require('@sequelize/core');
+const fs = require('node:fs');
 
 if (dialect === 'sqlite3') {
   describe('[SQLITE Specific] Connection Manager', () => {
@@ -65,6 +67,19 @@ if (dialect === 'sqlite3') {
       expect(jetpack.exists(nestedFileName)).to.equal('file');
 
       await sequelize.close();
+    });
+
+    it('closes the database connection after committing an unmanaged transaction', async function () {
+      const dbPath = `${Math.random()}_unmanaged_test.sqlite`;
+      this.db = new Sequelize({ dialect: 'sqlite3', storage: dbPath, logging: false });
+      const transaction = await this.db.startUnmanagedTransaction({});
+      await this.db.query('SELECT 1+1', { transaction, type: QueryTypes.SELECT });
+      await transaction.commit();
+      await this.db.close();
+
+      if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+      }
     });
   });
 }
