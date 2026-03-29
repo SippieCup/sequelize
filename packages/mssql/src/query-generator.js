@@ -484,6 +484,25 @@ export class MsSqlQueryGenerator extends MsSqlQueryGeneratorTypeScript {
       return template;
     }
 
+    if (attribute.generatedAs !== undefined) {
+      const expr = this.escape(attribute.generatedAs);
+      const persisted = (attribute.generatedColumn ?? 'STORED') === 'STORED' ? ' PERSISTED' : '';
+      let result = `AS (${expr})${persisted}`;
+
+      if (attribute.allowNull === false) {
+        result += ' NOT NULL';
+      }
+
+      if (
+        attribute.unique === true &&
+        (options?.context !== 'changeColumn' || this.dialect.supports.alterColumn.unique)
+      ) {
+        result += ' UNIQUE';
+      }
+
+      return result;
+    }
+
     template = attributeTypeToSql(attribute.type, { dialect: this.dialect });
 
     if (attribute.allowNull === false) {

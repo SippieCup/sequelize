@@ -98,6 +98,10 @@ export class MsSqlDialect extends AbstractDialect<MsSqlDialectOptions, MsSqlConn
     delete: {
       limit: false,
     },
+    generatedColumns: {
+      stored: true,
+      virtual: false,
+    },
   });
 
   readonly connectionManager: MsSqlConnectionManager;

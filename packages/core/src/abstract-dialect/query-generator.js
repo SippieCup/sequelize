@@ -6,10 +6,8 @@ import each from 'lodash/each';
 import forOwn from 'lodash/forOwn';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
-import isObject from 'lodash/isObject';
 import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
-import reduce from 'lodash/reduce';
 import uniq from 'lodash/uniq';
 import NodeUtil from 'node:util';
 import { Association } from '../associations/base';
@@ -2722,24 +2720,5 @@ export class AbstractQueryGenerator extends AbstractQueryGeneratorTypeScript {
     }
 
     return fragment;
-  }
-
-  // A recursive parser for nested where conditions
-  parseConditionObject(conditions, path) {
-    path ||= [];
-
-    return reduce(
-      conditions,
-      (result, value, key) => {
-        if (isObject(value)) {
-          return result.concat(this.parseConditionObject(value, path.concat(key))); // Recursively parse objects
-        }
-
-        result.push({ path: path.concat(key), value });
-
-        return result;
-      },
-      [],
-    );
   }
 }

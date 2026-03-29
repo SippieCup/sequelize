@@ -2191,6 +2191,7 @@ ${associationOwner._getAssociationDebugList()}`);
       this,
     );
     const updateValues = mapValueFieldNames(updatedDataValues, options.fields, this);
+
     const now = new Date();
 
     // Attach createdAt
@@ -2451,10 +2452,6 @@ ${associationOwner._getAssociationDebugList()}`);
           }
 
           const out = mapValueFieldNames(values, options.fields, model);
-          for (const key of modelDefinition.virtualAttributeNames) {
-            delete out[key];
-          }
-
           return out;
         });
 
@@ -3267,6 +3264,16 @@ Instead of specifying a Model, either:
     const modelDefinition = this.modelDefinition;
     const attributeDefs = modelDefinition.attributes;
 
+    // Validate that none of the fields are generated columns
+    const fieldsToCheck = Array.isArray(fields) ? fields : Object.keys(fields);
+    for (const fieldName of fieldsToCheck) {
+      if (modelDefinition.generatedAttributeNames.has(fieldName)) {
+        throw new Error(
+          `Cannot increment/decrement "${fieldName}" because it is a generated column.`,
+        );
+      }
+    }
+
     if (Array.isArray(fields)) {
       fields = fields.map(attributeName => {
         const attributeDef = attributeDefs.get(attributeName);
@@ -4058,7 +4065,9 @@ Instead of specifying a Model, either:
     }
 
     const realFields = options.fields.filter(
-      attributeName => !modelDefinition.virtualAttributeNames.has(attributeName),
+      attributeName =>
+        !modelDefinition.virtualAttributeNames.has(attributeName) &&
+        !modelDefinition.generatedAttributeNames.has(attributeName),
     );
     if (realFields.length === 0) {
       return this;

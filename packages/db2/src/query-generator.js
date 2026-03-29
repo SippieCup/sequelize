@@ -570,6 +570,24 @@ export class Db2QueryGenerator extends Db2QueryGeneratorTypeScript {
       changeNull = 0;
     }
 
+    if (attribute.generatedAs !== undefined) {
+      const expr = this.escape(attribute.generatedAs);
+      template += ` GENERATED ALWAYS AS (${expr})`;
+
+      if (
+        attribute.unique === true &&
+        (options?.context !== 'changeColumn' || this.dialect.supports.alterColumn.unique)
+      ) {
+        template += ' UNIQUE';
+      }
+
+      if (attribute.primaryKey) {
+        template += ' PRIMARY KEY';
+      }
+
+      return template;
+    }
+
     if (attribute.autoIncrement) {
       let initialValue = 1;
       if (attribute.initialAutoIncrement) {

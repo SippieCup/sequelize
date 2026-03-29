@@ -45,7 +45,6 @@ export function importDialect(dialect: string): typeof AbstractDialect {
       // eslint-disable-next-line import/no-extraneous-dependencies -- legacy function, will be removed. User needs to install the dependency themselves
       return require('@sequelize/snowflake').SnowflakeDialect;
     case 'oracle':
-      // eslint-disable-next-line import/no-extraneous-dependencies -- legacy function, will be removed. User needs to install the dependency themselves
       return require('@sequelize/oracle').OracleDialect;
     default:
       throw new Error(

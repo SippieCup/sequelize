@@ -90,6 +90,10 @@ export class SqliteDialect extends AbstractDialect<SqliteDialectOptions, SqliteC
     delete: {
       limit: false,
     },
+    generatedColumns: {
+      stored: true,
+      virtual: true,
+    },
   });
 
   readonly Query = SqliteQuery;

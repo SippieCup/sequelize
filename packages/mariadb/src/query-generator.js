@@ -177,6 +177,26 @@ export class MariaDbQueryGenerator extends MariaDbQueryGeneratorTypeScript {
       template += ' NOT NULL';
     }
 
+    if (attribute.generatedAs !== undefined) {
+      const expr = this.escape(attribute.generatedAs);
+      const mode = attribute.generatedColumn === 'VIRTUAL' ? 'VIRTUAL' : 'STORED';
+      template += ` GENERATED ALWAYS AS (${expr}) ${mode}`;
+
+      if (attribute.unique === true) {
+        template += ' UNIQUE';
+      }
+
+      if (attribute.primaryKey) {
+        template += ' PRIMARY KEY';
+      }
+
+      if (attribute.comment) {
+        template += ` COMMENT ${this.escape(attribute.comment)}`;
+      }
+
+      return template;
+    }
+
     if (attribute.autoIncrement) {
       template += ' auto_increment';
     }

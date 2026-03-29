@@ -8,6 +8,7 @@ import type { IndexOptions, TableNameWithSchema } from './abstract-dialect/query
 import type { Association } from './associations/index.js';
 import * as DataTypes from './data-types.js';
 import { BaseError } from './errors/index.js';
+import { BaseSqlExpression } from './expression-builders/base-sql-expression.js';
 import type { HookHandler } from './hooks.js';
 import type { ModelHooks } from './model-hooks.js';
 import { staticModelHooks } from './model-hooks.js';
@@ -117,6 +118,13 @@ export class ModelDefinition<M extends Model = Model> {
    * The list of attributes that do not really exist in the database.
    */
   readonly virtualAttributeNames = new SetView(this.#virtualAttributeNames);
+
+  readonly #generatedAttributeNames = new Set<string>();
+
+  /**
+   * The list of attributes that are generated (computed) columns in the database.
+   */
+  readonly generatedAttributeNames = new SetView(this.#generatedAttributeNames);
 
   readonly #attributesWithGetters = new Set<string>();
   readonly attributesWithGetters = new SetView(this.#attributesWithGetters);
@@ -457,6 +465,7 @@ Timestamp attributes are managed automatically by Sequelize, and their nullabili
     this.#dateAttributeNames.clear();
     this.#jsonAttributeNames.clear();
     this.#virtualAttributeNames.clear();
+    this.#generatedAttributeNames.clear();
     this.#physicalAttributes.clear();
     this.#defaultValues.clear();
     this.#columns.clear();
@@ -516,6 +525,47 @@ Timestamp attributes are managed automatically by Sequelize, and their nullabili
         throw new Error(
           `Attribute "${this.modelName}.${attributeName}" does not specify its DataType.`,
         );
+      }
+
+      if (rawAttribute.generatedAs !== undefined) {
+        if (!(rawAttribute.generatedAs instanceof BaseSqlExpression)) {
+          throw new TypeError(
+            `Attribute "${this.modelName}.${attributeName}": "generatedAs" must be a Literal or sql tagged template expression (e.g. sql.literal(...)). Received a ${typeof rawAttribute.generatedAs}.`,
+          );
+        }
+
+        const dialectSupports = this.#sequelize.dialect.supports;
+        if (!dialectSupports.generatedColumns.stored && !dialectSupports.generatedColumns.virtual) {
+          throw new Error(
+            `Attribute "${this.modelName}.${attributeName}": The ${this.#sequelize.dialect.name} dialect does not support generated columns.`,
+          );
+        }
+
+        const mode = rawAttribute.generatedColumn ?? 'STORED';
+
+        if (mode === 'STORED' && !dialectSupports.generatedColumns.stored) {
+          throw new Error(
+            `Attribute "${this.modelName}.${attributeName}": The ${this.#sequelize.dialect.name} dialect does not support STORED generated columns.`,
+          );
+        }
+
+        if (mode === 'VIRTUAL' && !dialectSupports.generatedColumns.virtual) {
+          throw new Error(
+            `Attribute "${this.modelName}.${attributeName}": The ${this.#sequelize.dialect.name} dialect does not support VIRTUAL generated columns.`,
+          );
+        }
+
+        if (Object.hasOwn(rawAttribute, 'defaultValue')) {
+          throw new Error(
+            `Attribute "${this.modelName}.${attributeName}": A generated column cannot have a defaultValue.`,
+          );
+        }
+
+        if (rawAttribute.autoIncrement) {
+          throw new Error(
+            `Attribute "${this.modelName}.${attributeName}": A generated column cannot be autoIncrement.`,
+          );
+        }
       }
 
       try {
@@ -658,6 +708,17 @@ Timestamp attributes are managed automatically by Sequelize, and their nullabili
           }
 
           this.#autoIncrementAttributeName = attributeName;
+        }
+
+        if (rawAttribute.generatedAs !== undefined) {
+          // Default generatedColumn to 'STORED' if not specified
+          if (!rawAttribute.generatedColumn) {
+            // @ts-expect-error -- setting computed default
+            builtAttribute.generatedColumn = 'STORED';
+          }
+
+          this.#generatedAttributeNames.add(attributeName);
+          this.#readOnlyAttributeNames.add(attributeName);
         }
 
         Object.freeze(builtAttribute);
